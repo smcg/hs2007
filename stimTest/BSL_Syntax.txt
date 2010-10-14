@@ -1,0 +1,231 @@
+Example matlab call to generate output lst file:
+BuildStimList('Exp_51_25Jan06.bsl','test.lst','M01',-1);
+
+
+BuildStimList Help File
+==========================================================================
+ function BUILDSTIMLIST(DESCRIPFILE, STIMLIST, SUFFIX, RANDSTATE)
+  generates a Marsha/Maggie stimulus list file (STIMLIST) using the design 
+  specified in DESCRIPFILE. If either DESCRIPFILE or STIMLIST is not  
+  specified, they are selected interactively; if STIMLIST exists it is
+  silently overwritten. 
+ 
+  BUILDSTIMLIST(...,SUFFIX) allows the user to specify a string that is
+  appended to recorded data token names using the syntax 
+ 	<TOKNAME>_<SERIAL#>_<SUFFIX>
+  where SERIAL# is a unique sequential index across all experiment tokens
+  and SUFFIX should have the form <SUBJ_ID>_<EXP_CODE>. If SUFFIX is empty
+  no modification is made to TOKNAMEs.
+ 
+  BUILDSTIMLIST(...,RANDSTATE) specified whether the function uses a fixed
+  random seed (0) or a unique random seed (-1) or a user specified seed
+  [1,2^32-1]. 
+ 
+  DESCRIPFILE format:
+ 
+  SPECIFICATION (Examples follow later):
+  a line beginning with the "//" sequence is ignored as a comment
+  a line beginning with DEFBLOCK defines the start of input to BUILDBLOCK,
+    which  should be terminated by a line beginning with "ENDDEF"
+    BUILDBLOCK is a companion function to BUILDSTIMLIST. Please see the
+    help of BuildBlock for details.
+  DEFBLOCK should be of the form
+    DEFBLOCK block_name block repcount randfunc arg1 arg2 arg3 ...
+    where
+    block_name (string identifier for the block)
+    block, repcount and randfunc are arguments to BUILDBLOCK
+    block (string appended to token name of each acquisition trial and
+           typically describes the condition of the trial. e.g. amc =
+           audio, emma and clear condition)
+    repcount (number of times each stimulus repeated)
+    randfunc (matlab function to be used for randomizing the tokens)
+        randfunc should be 'none' if no randomization is required
+        (function should accept a vector of indices and returns its
+        permutation)
+    arg1 .. argN (arguments to DEFBLOCK allowing it to be used as a
+        template. arguments are specified inside DEFBLOCK as $1, $2, ...
+        $N. One can specify multiple words as a single argument as long as
+        they are within double quotes (e.g., "quod erat demonstrandum")
+ 
+  a line beginning with BLOCK embeds the output of the named blocks as
+    created by BUILDBLOCK at the location of the line.
+  BLOCK should be of the form
+    BLOCK b1 b2 ... bn blockrep randfunc
+    where
+    b1, b2, ... bn are block names as defined by DEFBLOCK statements
+    blockrep (number of times each block is repeated)
+    randfunc (matlab function to be used for randomizing the tokens)
+        randfunc should be 'none' if no randomization is required
+        (function should accept a matrix of indices and returns its
+        permutation. Each column of the matrix will contain a set of blocks
+        and the number of columns is equal to blockrep).
+ 
+  and finally
+  a line beginning with REDEFBLOCK redefines an existing block
+  REDEFBLOCK should be of the form
+    REDEFBLOCK oldblockname newblockname args
+    where
+    oldblockname (an already defined block)
+    newblockname (name for the new block)
+    args (arguments/parameters for the new block. These must match the
+        number and nature of the parameters in the original block
+        definition.) 
+  all other lines are written as is to output STIMLIST
+ 
+  
+  Example BSL file:
+ 
+ ! TEST.BSL  - sample stimulus list description file
+ 
+ PAUSE Ready?
+ trial1 \d1 sample trial w/1 second duration
+ 
+ ! BLOCK A:  2 repetitions of three tokens, randomized
+ 
+ DEFBLOCK A a 2 randomize
+ // repeat "heed" 2x for each repetition of the others; its color & duration by argument
+ #T1 \d@3 @0 \e<ROW=-2><COL=4>Say <TXTCOLOR=@2>@1<TXTCOLOR=000000> for me
+ heed 2 #T1 heed AF0000 1.5
+ 
+ // template for remaining tokens:  set color by argument
+ #T2 @0 \e<ROW=-2><COL=4>Say <TXTCOLOR=@2>@1<TXTCOLOR=000000> for me
+ hid  #T2 hid 0000AF
+ head #T2 head 00AF00
+ ENDDEF
+ 
+ BLOCK A 1 none
+ 
+ ! BLOCK B:  2 repetitions of three tokens, not randomized
+ 
+ DEFBLOCK B amn 2 none
+ #T @0 \e<ROW=-2><COL=4>Say <TXTCOLOR=@2>@1<TXTCOLOR=000000> for me
+ heed #T heed AF0000
+ hid  #T hid 0000AF
+ head #T head 00AF00
+ ENDDEF
+ 
+ BLOCK B 1 none
+ 
+ ! BLOCK C:  bundle preceding instructional DUMMY token; reset rep offset
+ 
+ DEFBLOCK C amn 1 none
+ #D @0 \e<ROW=2><HCEN>Speak when color changes</HCEN><ROW=-2><TXTCOLOR=@2><HCEN>@1</HCEN><TXTCOLOR=000000>
+ #T @0 acquisition \e<ROW=-2><TXTCOLOR=@2><HCEN>@1</HCEN><TXTCOLOR=000000>
+ atu #D atu 0000AF #T atu 00AF00
+ ENDDEF
+ 
+ BLOCK C 1 none
+ 
+ ! BLOCK PD: practice block
+ 
+ // Create a block definition that takes one argument
+ DEFBLOCK PD amn 2 none #D
+ $1 @0 \e<ROW=-2><COL=4>Say <TXTCOLOR=@2>@1<TXTCOLOR=000000> for me
+ heed $1 heed AF0000
+ hid  $1 hid  0000AF
+ head $1 head 00AF00
+ ENDDEF
+ 
+ // Redfines the above block as an actual trial with a random order
+ REDEFBLOCK PD TD amn 2 randomize #T
+ 
+ BLOCK PD 1 none
+ 
+ ! BLOCK D: trial block
+ BLOCK TD 1 none
+ 
+ ! BLOCK S:
+ 
+ // Create a block definition that takes two arguments
+ DEFBLOCK S1 amn 2 randomize #T "<BOLD>@1</BOLD> @2"
+ $1 @0 \e<ROW=-2><COL=4>Say $2 for me
+ heed $1 heed heed
+ hid  $1 hid  hid
+ head $1 head head
+ ENDDEF
+ 
+ // Redfines the above block with a different stress pattern
+ REDEFBLOCK S1 S2 amn 2 randomize #T "@1 <BOLD>@2</BOLD>"
+ REDEFBLOCK S1 S3 amn 2 randomize #T "@1 @2"
+  
+ // Block 1 followed by block 2
+ BLOCK [S1 S2] 1 none
+ // Equivalent to 
+ // BLOCK S1 1 none
+ // BLOCK S2 1 none
+ 
+ // Repeat each of the 3 blocks 5 times with a randomizer that randomizes
+ // within each group of three blocks.
+ BLOCK [S1 S2 S3] 5 blockrandom
+ 
+  see BUILDBLOCK for further examples and explanation
+
+==========================================================================
+ BUILDBLOCK  - expands tokens into templates for use in Maggie stimulus lists
+ 
+ 	usage:  BuildBlock(TOKENFILE,LSTFILE,BLOCK,REPCOUNT,PERMFCN)
+ 
+  TOKENFILE - input token file or cellstr array (default ''; prompts if empty)
+  LSTFILE   - expanded output LST file (default ''; echoed to command window if empty)
+  BLOCK     - string appended to the token name for each acquisition trial (default '')
+  REPOFFSET - determines the starting offset for incrementing the repetition number (default 0)  
+  REPCOUNT  - number of times each stimulus is to be repeated (default 1)
+  PERMFCN:  - function that accepts a vector of indices and returns its permutation (default '')
+  
+  Optionally returns
+  NEWOFFSET - the value of REPOFFSET if this block is called again
+  STROUT    - expanded output as a cellstr array (overrides LSTFILE)
+ 
+  TOKENFILE format (This is also the syntax within a DEFBLOCK block):
+ 
+  ! Comment (blank lines and text following "!")
+  #<TCODE<IDX>> <TEMPLATE>                                              ! TEMPLATE line
+  <TOKEN> <PROMPT> (TREP) (#<TCODE<IDX>> (ARG1 ... ARGn)) (#<TCODE<IDX>> (ARG1 ... ARGn))  ! TOKEN line 
+ 
+  TEMPLATES are used to define carrier contexts, display formatting, and
+  allow bundling of multiple screen displays/token (e.g., an instructional
+  DUMMY trial preceding data acq.) The "#T" TCODE sequence defines a data
+  acquisition template that generates a token name, while "#D" and "#P"
+  generate DUMMY and PAUSE tokens respectively.  Each of these may be
+  followed by an indexation integer IDX for subsequent reference in the
+  TOKEN lines (i.e., #T2 maps to template 2).  Within each template the
+  "@<N>" sequence is an argument place-holder that during expansion is
+  replaced by the Nth argument specified with each token. "@0" is  replaced
+  by the PROMPT, and "@@" with the "@" character. If PROMPT is empty,
+  PROMPT is set to TOKEN. TOKEN is used to create the filename. 
+ 
+  All TOKENS are expanded REPCOUNT times.  Tokens that do not refer to any
+  template are passed through as is.  Tokens may reference an arbitrary
+  number of templates, with the specification order defining the ultimate
+  bundled presentation order.  Each template reference must be followed by
+  the appropriate number of arguments for instantiation: e.g., if
+  referenced template #T1 includes "@1" and "@2" then each token must
+  specify two arguments ("@0" is always the token name itself).  The
+  optional TREP parameter is an optional token-specific multiplier, such
+  that the resulting output count for that token is TREP*REPCOUNT.
+ 
+  Adds a $$$ placeholder for a trial count that is replaced by
+  BuildStimList to reflect the actual number.
+ 
+  SAMPLE TOKENFILE input
+  
+ ! repeat "heed" 3x for each repetition of the others; its color & duration by argument
+ #T1 \d@2 @0 \e<ROW=-2><COL=4>Say <TXTCOLOR=@2>@1<TXTCOLOR=000000> for me
+ heed 3 #T1 heed AF0000 1.5
+ ! template for remaining tokens:  set color by argument
+ #T2 @0 \e<ROW=-2><COL=4>Say <TXTCOLOR=@2>@1<TXTCOLOR=000000> for me
+ hid  #T2 hid 0000AF
+ head #T2 head 0000AF
+ 
+ ! bundle preceding instructional DUMMY token
+ #D @0 \e<ROW=2><HCEN>Speak when color changes</HCEN><ROW=-2><TXTCOLOR=@2><HCEN>@1</HCEN><TXTCOLOR=000000>
+ #T @0 acquisition \e<ROW=-2><TXTCOLOR=@2><HCEN>@1</HCEN><TXTCOLOR=000000>
+ atu #D atu 0000AF #T atu 00AF00
+ 
+  see also BUILDSTIMLIST
+
+==========================================================================
+
+
+
+

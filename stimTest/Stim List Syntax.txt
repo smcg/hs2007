@@ -1,0 +1,94 @@
+Enhanced Stimulus Syntax 10/04/00
+
+The Maggie STIMULUS LIST controls both experiment sequencing and what subjects see.
+It is a text file that can be loaded and stored as part of experiment configuration.
+Within a -.LST file blank lines are ignored and everything subsequent to the "!"
+character on a line is ignored as a comment (exception:  see escape sequences below).
+
+In general each line of the stimulus list defines an experiment TOKEN (a specific trial
+for which data is collected).  For clarity the "\+" escape sequence can be used to break
+long lines; however lines concatenated in this way are still treated internally as single 
+units.  The expected syntax is as follows:
+
+  NAME (\dDURATION) (LABEL) (\eENHANCED_TEXT)
+
+The first white-space delimited sequence of characters on this line is interpreted as 
+the token NAME, and is used by Maggie to generate the filename of the acquired data 
+for the trial.  This is the only required element.  It is optionally followed by a 
+DURATION setting that resets the current trial acquisition period (if unspecified the 
+current setting is used).  The duration must be introduced by the "\d" sequence, and
+specified as an integer interpreted as seconds (e.g. \d8 sets token duration to 8 secs).
+Following this is an optional token LABEL.  The label is displayed in the control window 
+as a mnemonic for the experimenter, and if no enhanced text follows is also shown to the 
+subject centered within the stimulus window.  For more precise control of the displayed
+stimulus an ENHANCED_TEXT sequence should be appended.  This is introduced by the "\e" 
+sequence; embedded <TAGS> control how subsequent text is displayed.
+
+There are two special values for NAME which do not trigger acquisition, but which otherwise
+work exactly the same (display extended text, set parameters, etc.):
+
+  PAUSE	- this halts auto-sequencing if enabled and must be manually aborted
+  DUMMY	- this functions exactly as a trial, but without acquiring data
+
+
+Escape sequences (backslash followed by escaped character)
+
+\\   explicit "\" character
+\!   explicit "!" character
+\+   continuation line follows
+\dNN duration sequence
+\e   enhanced text follows
+\a, \n, \s  used to arm and set CI box attenuation levels
+
+Enhanced text TAGS (PROPERTY embedded in "<>" delimiters)
+
+<LT>			explicit "<" character
+
+These tags function in pairs:  <PROPERTY> sets, </PROPERTY> cancels
+<BOLD>			toggle bolding
+<ITALIC>		toggle italicizing
+<ULINE>			toggle underlining
+<HCEN>			horizontal text centering
+<VCEN>			vertical text centering
+<CENTER>		window centered text
+
+These tags take arguments
+<P(=nn)>		carriage return (argument optional; default=1)
+<ROW=nn>		set line number (negative values counted from bottom)
+<COL=nn>		set column (negative values counted from right)
+<FONT="fontname">	set specified font
+<SIZE=nn>		set font size
+<FGCOLOR=rrggbb>	set specified foreground color (00 - FF; red, green, blue)
+<BGCOLOR=rrggbb>	set background color
+<TXTCOLOR=rrggbb>	set text color
+<MATRIX=ROWSxCOLS>	specify matrix
+<IMAGE="filename">	display specified -.BMP format image file
+<WAV="filename">	play specified -.WAV format sound file
+
+
+Matrix specification syntax
+
+The argument to the MATRIX tag gives its size (number of rows by columns).
+The only text following this on a line should be the contents of the matrix;
+i.e., place any text modification tags before the MATRIX tag.  Matrix contents
+consist of cells separated by the "|" character, and the number of cells must
+equal the product of the number of rows and columns.  Cells are parsed row-wise.
+The first row of cells are interpreted as the column labels.  Cells on subsequent
+rows are assumed to have two entries separated by a "," delimiter; these are 
+displayed on top of each other centered within each cell grid.  Note that white
+space within cell entries is both read and displayed.  Do not neglect to terminate
+the final cell entry with the "|" separator (or the program will complain).
+
+
+Notes
+
+The centering tags must occur in pairs and may not be overlapped.  Any change
+to text characteristics (FONT, SIZE, etc.) persists until changed again.  The
+upper left corner of the displayed window is row 1 column 1, and this is the
+default starting location for enhanced text.  Specifying negative values for
+the ROW or COL tags resets the current text location to that number of lines
+or columns counted from the current window bottom or right side respectively
+(e.g. <ROW=-1> sets the current row to the bottom displayed line).  BMP image
+files are loaded from the current working directory unless the filename includes
+an explicit path.  Displayed images are stretched to fill the entire stimulus
+window.  See the file TEST.LST for examples of all tags in action.
